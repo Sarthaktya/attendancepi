@@ -1,7 +1,7 @@
 import csv
 import io
 from datetime import date, datetime
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from ..database import get_db, Student, AttendanceRecord, get_settings, save_setting
