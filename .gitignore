@@ -1,0 +1,16 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Attendance output
+attendance_logs/
+attendance.db
+
+# Enrolled face data (biometric — do not commit)
+known_embeddings.npy
+
+# Model weights (large binary files — download separately)
+*.onnx
+*.caffemodel
+*.prototxt

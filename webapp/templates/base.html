@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AttendancePi — {% block title %}{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors: { gray: { 950: "#030712" } } } }
+    }
+  </script>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen flex flex-col">
+
+  <!-- Navbar -->
+  <nav class="bg-gray-900 border-b border-gray-800 px-8 py-4 flex items-center justify-between shrink-0">
+    <span class="text-lg font-bold tracking-tight text-white">AttendancePi</span>
+    <div class="flex gap-7 text-sm font-medium">
+      <a href="/dashboard"  class="text-gray-400 hover:text-white transition">Dashboard</a>
+      <a href="/monitor"    class="text-gray-400 hover:text-white transition">Monitor</a>
+      <a href="/enroll"     class="text-gray-400 hover:text-white transition">Enroll</a>
+      <a href="/students"   class="text-gray-400 hover:text-white transition">Students</a>
+      <a href="/attendance" class="text-gray-400 hover:text-white transition">Attendance</a>
+      <a href="/settings"   class="text-gray-400 hover:text-white transition">Settings</a>
+      <a href="/logout"     class="text-gray-500 hover:text-red-400 transition">Logout</a>
+    </div>
+  </nav>
+
+  <!-- Page content -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-8 py-8">
+    {% block content %}{% endblock %}
+  </main>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

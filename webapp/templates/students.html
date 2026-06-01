@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Students{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold">Enrolled Students</h1>
+  <a href="/enroll"
+    class="bg-green-700 hover:bg-green-600 text-white text-sm font-semibold rounded-lg px-5 py-2.5 transition">
+    + Enroll New
+  </a>
+</div>
+
+{% if students %}
+<div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="border-b border-gray-800 text-gray-400 text-xs uppercase tracking-wider">
+        <th class="text-left px-6 py-3">Name</th>
+        <th class="text-left px-6 py-3">Enrolled On</th>
+        <th class="text-right px-6 py-3">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for student in students %}
+      <tr class="border-b border-gray-800 last:border-0 hover:bg-gray-800/50 transition" id="row-{{ student.id }}">
+        <td class="px-6 py-4 font-medium text-white">{{ student.name }}</td>
+        <td class="px-6 py-4 text-gray-400">{{ student.created_at.strftime("%d %b %Y") }}</td>
+        <td class="px-6 py-4 text-right">
+          <button
+            onclick="deleteStudent({{ student.id }}, '{{ student.name }}')"
+            class="text-red-400 hover:text-red-300 text-xs font-medium transition">
+            Remove
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="bg-gray-900 border border-gray-800 rounded-xl p-12 text-center">
+  <p class="text-gray-400 mb-4">No students enrolled yet.</p>
+  <a href="/enroll" class="bg-green-700 hover:bg-green-600 text-white text-sm font-semibold rounded-lg px-5 py-2.5 transition">
+    Enroll First Student
+  </a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function deleteStudent(id, name) {
+    if (!confirm(`Remove ${name}? This will also delete their attendance records.`)) return;
+
+    fetch(`/api/students/${id}`, { method: "DELETE" })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          const row = document.getElementById(`row-${id}`);
+          row.style.opacity = "0";
+          row.style.transition = "opacity 0.3s";
+          setTimeout(() => row.remove(), 300);
+        }
+      });
+  }
+</script>
+{% endblock %}

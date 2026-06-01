@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: attendancepi
+    env: python
+    buildCommand: pip install -r requirements_webapp.txt
+    startCommand: uvicorn webapp.main:app --host 0.0.0.0 --port $PORT --workers 1
+    envVars:
+      - key: ADMIN_PASSWORD
+        sync: false          # set this manually in Render dashboard
+      - key: PI_SECRET
+        sync: false          # set this manually in Render dashboard
+      - key: DATABASE_URL
+        fromDatabase:
+          name: attendancepi-db
+          property: connectionString
+
+databases:
+  - name: attendancepi-db
+    plan: free

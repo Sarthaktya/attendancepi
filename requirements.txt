@@ -1,0 +1,5 @@
+opencv-contrib-python
+numpy
+
+# Only needed on Raspberry Pi — comment this out on laptop
+# picamera2

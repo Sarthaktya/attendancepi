@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Attendance{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold">
+    Attendance
+    {% if is_today %}<span class="text-green-400 text-base font-normal ml-2">— Today</span>{% endif %}
+  </h1>
+
+  <div class="flex items-center gap-3">
+    <!-- Date picker -->
+    <form method="get" action="/attendance" class="flex gap-2">
+      <input
+        type="date"
+        name="selected_date"
+        value="{{ selected_date }}"
+        class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500 transition"
+      />
+      <button type="submit"
+        class="bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium rounded-lg px-4 py-2 transition">
+        View
+      </button>
+    </form>
+
+    <!-- Export CSV -->
+    <a href="/api/attendance/export?selected_date={{ selected_date }}"
+      class="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white text-sm font-medium rounded-lg px-4 py-2 transition">
+      Export CSV
+    </a>
+  </div>
+</div>
+
+<!-- Stats bar -->
+<div class="flex gap-4 mb-6">
+  <div class="bg-gray-900 border border-gray-800 rounded-xl px-6 py-4">
+    <p class="text-xs text-gray-400 uppercase tracking-wider mb-0.5">Present</p>
+    <p class="text-3xl font-bold text-green-400" id="present-count">{{ records | length }}</p>
+  </div>
+</div>
+
+<!-- Table -->
+{% if records %}
+<div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="border-b border-gray-800 text-gray-400 text-xs uppercase tracking-wider">
+        <th class="text-left px-6 py-3">#</th>
+        <th class="text-left px-6 py-3">Name</th>
+        <th class="text-left px-6 py-3">Time Marked</th>
+      </tr>
+    </thead>
+    <tbody id="records-body">
+      {% for record in records %}
+      <tr class="border-b border-gray-800 last:border-0 hover:bg-gray-800/50 transition">
+        <td class="px-6 py-4 text-gray-500">{{ loop.index }}</td>
+        <td class="px-6 py-4 font-medium text-white">{{ record.name }}</td>
+        <td class="px-6 py-4 text-gray-400">{{ record.time }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="bg-gray-900 border border-gray-800 rounded-xl p-12 text-center">
+  <p class="text-gray-400">No attendance records for this date.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if is_today %}
+<script>
+  // Live updates when viewing today's attendance
+  const body      = document.getElementById("records-body");
+  const countEl   = document.getElementById("present-count");
+  let   count     = {{ records | length }};
+  const seen      = new Set({{ records | map(attribute="name") | list | tojson }});
+
+  const proto = location.protocol === "https:" ? "wss:" : "ws:";
+  const ws    = new WebSocket(`${proto}//${location.host}/ws/browser`);
+
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+    if (msg.type !== "attendance_marked") return;
+    if (seen.has(msg.name)) return;
+
+    seen.add(msg.name);
+    count++;
+    countEl.textContent = count;
+
+    // Remove "no records" placeholder if present
+    const empty = document.querySelector(".text-gray-400");
+    if (empty && empty.textContent.includes("No attendance")) empty.closest("div").remove();
+
+    // Add row
+    const row     = document.createElement("tr");
+    row.className = "border-b border-gray-800 last:border-0 hover:bg-gray-800/50 transition";
+    row.innerHTML = `
+      <td class="px-6 py-4 text-gray-500">${count}</td>
+      <td class="px-6 py-4 font-medium text-white">${msg.name}</td>
+      <td class="px-6 py-4 text-gray-400">${msg.time}</td>
+    `;
+    if (body) body.appendChild(row);
+  };
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+  <h1 class="text-2xl font-bold mb-2">Settings</h1>
+  <p class="text-gray-400 text-sm mb-8">
+    Changes are saved instantly and pushed to the Pi live — no restart needed.
+  </p>
+
+  <!-- Save feedback banner -->
+  <div id="banner" class="hidden mb-6 rounded-xl px-5 py-3.5 text-sm font-medium"></div>
+
+  <div class="space-y-5">
+
+    <!-- Recognition Threshold -->
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+      <div class="flex items-start justify-between mb-1">
+        <div>
+          <h3 class="font-semibold text-white">Recognition Threshold</h3>
+          <p class="text-xs text-gray-400 mt-0.5">
+            How confident the system must be before accepting a match.
+            Higher = stricter, fewer false matches. Lower = more lenient, may misidentify.
+          </p>
+        </div>
+        <span id="threshold-val" class="text-green-400 font-bold text-lg ml-4 shrink-0">
+          {{ settings.recognition_threshold }}
+        </span>
+      </div>
+      <input type="range" id="recognition_threshold"
+        min="0.50" max="0.95" step="0.01"
+        value="{{ settings.recognition_threshold }}"
+        oninput="document.getElementById('threshold-val').textContent = parseFloat(this.value).toFixed(2)"
+        class="w-full mt-3 accent-green-500"
+      />
+      <div class="flex justify-between text-xs text-gray-500 mt-1">
+        <span>0.50 — lenient</span>
+        <span>0.95 — very strict</span>
+      </div>
+    </div>
+
+    <!-- Detection Confidence -->
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+      <div class="flex items-start justify-between mb-1">
+        <div>
+          <h3 class="font-semibold text-white">Detection Confidence</h3>
+          <p class="text-xs text-gray-400 mt-0.5">
+            Minimum confidence to consider a face detected.
+            Lower = detects more faces including partial/angled. Higher = only clear faces.
+          </p>
+        </div>
+        <span id="detection-val" class="text-green-400 font-bold text-lg ml-4 shrink-0">
+          {{ settings.detection_confidence }}
+        </span>
+      </div>
+      <input type="range" id="detection_confidence"
+        min="0.30" max="0.90" step="0.05"
+        value="{{ settings.detection_confidence }}"
+        oninput="document.getElementById('detection-val').textContent = parseFloat(this.value).toFixed(2)"
+        class="w-full mt-3 accent-green-500"
+      />
+      <div class="flex justify-between text-xs text-gray-500 mt-1">
+        <span>0.30 — detect more</span>
+        <span>0.90 — only clear faces</span>
+      </div>
+    </div>
+
+    <!-- Temporal Duration -->
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+      <div class="flex items-start justify-between mb-1">
+        <div>
+          <h3 class="font-semibold text-white">Presence Duration</h3>
+          <p class="text-xs text-gray-400 mt-0.5">
+            How many seconds a face must be continuously visible before being marked present.
+            Higher = less accidental marking. Lower = faster marking.
+          </p>
+        </div>
+        <span id="duration-val" class="text-green-400 font-bold text-lg ml-4 shrink-0">
+          {{ settings.temporal_min_duration }}s
+        </span>
+      </div>
+      <input type="range" id="temporal_min_duration"
+        min="0.5" max="10.0" step="0.5"
+        value="{{ settings.temporal_min_duration }}"
+        oninput="document.getElementById('duration-val').textContent = parseFloat(this.value).toFixed(1) + 's'"
+        class="w-full mt-3 accent-green-500"
+      />
+      <div class="flex justify-between text-xs text-gray-500 mt-1">
+        <span>0.5s — instant</span>
+        <span>10s — very deliberate</span>
+      </div>
+    </div>
+
+    <!-- Enrollment Samples -->
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+      <div class="flex items-start justify-between mb-1">
+        <div>
+          <h3 class="font-semibold text-white">Enrollment Samples</h3>
+          <p class="text-xs text-gray-400 mt-0.5">
+            Number of face samples captured per person during enrollment.
+            More samples = better accuracy but longer enrollment time.
+          </p>
+        </div>
+        <span id="samples-val" class="text-green-400 font-bold text-lg ml-4 shrink-0">
+          {{ settings.num_enroll_samples }}
+        </span>
+      </div>
+      <input type="range" id="num_enroll_samples"
+        min="10" max="50" step="5"
+        value="{{ settings.num_enroll_samples }}"
+        oninput="document.getElementById('samples-val').textContent = this.value"
+        class="w-full mt-3 accent-green-500"
+      />
+      <div class="flex justify-between text-xs text-gray-500 mt-1">
+        <span>10 — quick</span>
+        <span>50 — thorough</span>
+      </div>
+    </div>
+
+    <!-- Save button -->
+    <button onclick="saveSettings()"
+      class="w-full bg-green-700 hover:bg-green-600 text-white font-semibold rounded-xl py-3 text-sm transition">
+      Save & Push to Pi
+    </button>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function saveSettings() {
+    const payload = {
+      recognition_threshold: parseFloat(document.getElementById("recognition_threshold").value),
+      detection_confidence:  parseFloat(document.getElementById("detection_confidence").value),
+      temporal_min_duration: parseFloat(document.getElementById("temporal_min_duration").value),
+      num_enroll_samples:    parseInt(document.getElementById("num_enroll_samples").value),
+    };
+
+    fetch("/api/settings", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify(payload),
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.ok) showBanner("Settings saved and pushed to Pi.", "bg-green-900/50 border border-green-700 text-green-300");
+      else         showBanner("Something went wrong.", "bg-red-900/50 border border-red-700 text-red-300");
+    })
+    .catch(() => showBanner("Could not reach server.", "bg-red-900/50 border border-red-700 text-red-300"));
+  }
+
+  function showBanner(msg, classes) {
+    const el = document.getElementById("banner");
+    el.className = `mb-6 rounded-xl px-5 py-3.5 text-sm font-medium ${classes}`;
+    el.textContent = msg;
+    setTimeout(() => el.classList.add("hidden"), 4000);
+  }
+</script>
+{% endblock %}

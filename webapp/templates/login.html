@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AttendancePi — Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen flex items-center justify-center">
+  <div class="w-full max-w-sm">
+    <h1 class="text-3xl font-bold text-center mb-2">AttendancePi</h1>
+    <p class="text-gray-400 text-center mb-8 text-sm">Admin Panel</p>
+
+    {% if error %}
+    <div class="bg-red-900/40 border border-red-700 text-red-300 rounded-lg px-4 py-3 text-sm mb-5">
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="post" action="/login" class="bg-gray-900 border border-gray-800 rounded-xl p-8 space-y-5">
+      <div>
+        <label class="block text-sm text-gray-400 mb-1.5">Password</label>
+        <input
+          type="password"
+          name="password"
+          autofocus
+          class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-500 transition"
+          placeholder="Enter admin password"
+        />
+      </div>
+      <button
+        type="submit"
+        class="w-full bg-green-600 hover:bg-green-500 text-white font-semibold rounded-lg py-2.5 text-sm transition"
+      >
+        Sign In
+      </button>
+    </form>
+  </div>
+</body>
+</html>

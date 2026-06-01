@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}Enroll Student{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-bold mb-6">Enroll New Student</h1>
+
+<div class="grid grid-cols-3 gap-6">
+
+  <!-- Camera Feed -->
+  <div class="col-span-2 bg-gray-900 border border-gray-800 rounded-xl p-5">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-semibold text-white">Camera</h2>
+      <div class="flex items-center gap-2">
+        <span id="pi-dot" class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span>
+        <span id="pi-label" class="text-sm text-gray-400">Pi Disconnected</span>
+      </div>
+    </div>
+    <canvas id="feed" width="640" height="480"
+      class="w-full rounded-lg bg-gray-800">
+    </canvas>
+  </div>
+
+  <!-- Controls -->
+  <div class="space-y-5">
+
+    <!-- Form -->
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4" id="form-panel">
+      <h3 class="font-semibold">Student Details</h3>
+      <div>
+        <label class="block text-sm text-gray-400 mb-1.5">Full Name</label>
+        <input
+          id="student-name"
+          type="text"
+          placeholder="e.g. Sarthak Tyagi"
+          class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-green-500 transition"
+        />
+      </div>
+      <button
+        id="start-btn"
+        onclick="startEnrollment()"
+        class="w-full bg-green-700 hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-lg py-2.5 text-sm transition"
+      >
+        Start Enrollment
+      </button>
+    </div>
+
+    <!-- Progress panel (hidden until enrollment starts) -->
+    <div id="progress-panel" class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4 hidden">
+      <div class="flex items-center justify-between">
+        <h3 class="font-semibold">Capturing Samples</h3>
+        <span id="count-label" class="text-sm text-gray-400">0 / 20</span>
+      </div>
+
+      <div class="w-full bg-gray-800 rounded-full h-2.5">
+        <div id="progress-bar" class="bg-green-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+      </div>
+
+      <p class="text-sm text-gray-400">
+        Stand in front of the camera. Samples are captured automatically every 2 seconds.
+        Move slightly between captures for better accuracy.
+      </p>
+
+      <button
+        onclick="stopEnrollment()"
+        class="w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg py-2.5 text-sm transition"
+      >
+        Cancel
+      </button>
+    </div>
+
+    <!-- Success panel (hidden until done) -->
+    <div id="success-panel" class="bg-green-900/40 border border-green-700 rounded-xl p-5 hidden">
+      <p class="font-semibold text-green-300 mb-1">Enrollment Complete</p>
+      <p id="success-msg" class="text-sm text-gray-300"></p>
+      <a href="/students" class="block mt-4 text-center bg-green-700 hover:bg-green-600 text-white rounded-lg py-2.5 text-sm font-semibold transition">
+        View All Students
+      </a>
+    </div>
+
+    <!-- Error panel -->
+    <div id="error-panel" class="bg-red-900/40 border border-red-700 rounded-xl p-4 hidden">
+      <p id="error-msg" class="text-sm text-red-300"></p>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const canvas   = document.getElementById("feed");
+  const ctx      = canvas.getContext("2d");
+  const piDot    = document.getElementById("pi-dot");
+  const piLabel  = document.getElementById("pi-label");
+  let   enrolling = false;
+  let   totalSamples = 20;
+
+  const proto = location.protocol === "https:" ? "wss:" : "ws:";
+  const ws    = new WebSocket(`${proto}//${location.host}/ws/browser`);
+
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+
+    if (msg.type === "frame") {
+      const img  = new Image();
+      img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      img.src    = "data:image/jpeg;base64," + msg.data;
+    }
+
+    else if (msg.type === "pi_status") {
+      const on = msg.connected;
+      piDot.className     = `w-2.5 h-2.5 rounded-full inline-block ${on ? "bg-green-500" : "bg-red-500"}`;
+      piLabel.textContent = on ? "Pi Connected" : "Pi Disconnected";
+    }
+
+    else if (msg.type === "sample_captured") {
+      const count = msg.count;
+      const total = msg.total;
+      totalSamples = total;
+      document.getElementById("count-label").textContent = `${count} / ${total}`;
+      document.getElementById("progress-bar").style.width = `${(count / total) * 100}%`;
+    }
+
+    else if (msg.type === "enrollment_complete") {
+      const name = msg.name;
+      show("progress-panel", false);
+      show("success-panel", true);
+      document.getElementById("success-msg").textContent =
+        `${name} has been enrolled successfully.`;
+      enrolling = false;
+    }
+  };
+
+  function show(id, visible) {
+    document.getElementById(id).classList.toggle("hidden", !visible);
+  }
+
+  function startEnrollment() {
+    const name = document.getElementById("student-name").value.trim();
+    if (!name) {
+      show("error-panel", true);
+      document.getElementById("error-msg").textContent = "Please enter a student name.";
+      return;
+    }
+    if (ws.readyState !== WebSocket.OPEN) {
+      show("error-panel", true);
+      document.getElementById("error-msg").textContent = "Not connected to server.";
+      return;
+    }
+
+    show("error-panel",    false);
+    show("form-panel",     false);
+    show("progress-panel", true);
+    document.getElementById("count-label").textContent = "0 / 20";
+    document.getElementById("progress-bar").style.width = "0%";
+
+    ws.send(JSON.stringify({ type: "start_enrollment", name: name, samples: 20 }));
+    enrolling = true;
+  }
+
+  function stopEnrollment() {
+    ws.send(JSON.stringify({ type: "stop_enrollment" }));
+    show("progress-panel", false);
+    show("form-panel",     true);
+    enrolling = false;
+  }
+</script>
+{% endblock %}

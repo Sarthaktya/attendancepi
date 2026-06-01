@@ -1,0 +1,4 @@
+opencv-contrib-python
+numpy
+websockets
+# picamera2 is pre-installed on Raspberry Pi OS — do not pip install it

@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-3 gap-6">
+
+  <!-- Camera Feed -->
+  <div class="col-span-2 bg-gray-900 border border-gray-800 rounded-xl p-5">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-semibold text-white">Live Feed</h2>
+      <div class="flex items-center gap-2">
+        <span id="pi-dot" class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span>
+        <span id="pi-label" class="text-sm text-gray-400">Pi Disconnected</span>
+      </div>
+    </div>
+    <canvas id="feed" width="640" height="480"
+      class="w-full rounded-lg bg-gray-800 aspect-video object-cover">
+    </canvas>
+  </div>
+
+  <!-- Side panel -->
+  <div class="space-y-4">
+
+    <!-- Stats -->
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+      <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Total Students</p>
+      <p class="text-4xl font-bold">{{ total_students }}</p>
+    </div>
+
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-5">
+      <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Present Today</p>
+      <p class="text-4xl font-bold text-green-400" id="today-count">{{ today_count }}</p>
+    </div>
+
+    <!-- Recent arrivals live feed -->
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 flex-1">
+      <p class="text-xs text-gray-400 uppercase tracking-wider mb-3">Recent Arrivals</p>
+      <div id="arrivals" class="space-y-2 text-sm max-h-64 overflow-y-auto">
+        <p class="text-gray-600 italic">Waiting...</p>
+      </div>
+    </div>
+
+    <!-- Quick links -->
+    <a href="/enroll"
+      class="block bg-green-700 hover:bg-green-600 transition text-white text-center font-semibold rounded-xl py-3 text-sm">
+      + Enroll New Student
+    </a>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const canvas    = document.getElementById("feed");
+  const ctx       = canvas.getContext("2d");
+  const piDot     = document.getElementById("pi-dot");
+  const piLabel   = document.getElementById("pi-label");
+  const arrivals  = document.getElementById("arrivals");
+  const countEl   = document.getElementById("today-count");
+  let   count     = {{ today_count }};
+
+  const proto = location.protocol === "https:" ? "wss:" : "ws:";
+  const ws    = new WebSocket(`${proto}//${location.host}/ws/browser`);
+
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+
+    if (msg.type === "frame") {
+      const img  = new Image();
+      img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      img.src    = "data:image/jpeg;base64," + msg.data;
+    }
+
+    else if (msg.type === "pi_status") {
+      const on = msg.connected;
+      piDot.className      = `w-2.5 h-2.5 rounded-full inline-block ${on ? "bg-green-500" : "bg-red-500"}`;
+      piLabel.textContent  = on ? "Pi Connected" : "Pi Disconnected";
+    }
+
+    else if (msg.type === "attendance_marked") {
+      count++;
+      countEl.textContent = count;
+
+      // Remove placeholder text on first arrival
+      const placeholder = arrivals.querySelector("p");
+      if (placeholder) placeholder.remove();
+
+      const row       = document.createElement("div");
+      row.className   = "flex justify-between items-center py-1.5 border-b border-gray-800 last:border-0";
+      row.innerHTML   = `
+        <span class="font-medium text-white">${msg.name}</span>
+        <span class="text-gray-400 text-xs">${msg.time}</span>
+      `;
+      arrivals.prepend(row);
+    }
+  };
+
+  ws.onclose = () => {
+    piDot.className     = "w-2.5 h-2.5 rounded-full inline-block bg-red-500";
+    piLabel.textContent = "Pi Disconnected";
+  };
+</script>
+{% endblock %}
