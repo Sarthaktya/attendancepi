@@ -11,7 +11,6 @@ templates = Jinja2Templates(directory=str(Path(__file__).parent.parent / "templa
 
 
 def _auth(request: Request):
-    """Return a redirect if not logged in, else None."""
     if not is_authenticated(request):
         return RedirectResponse("/login", status_code=303)
     return None
@@ -21,7 +20,7 @@ def _auth(request: Request):
 
 @router.get("/login")
 def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request, "error": None})
+    return templates.TemplateResponse(request, "login.html", {"error": None})
 
 
 @router.post("/login")
@@ -35,7 +34,7 @@ async def login(request: Request):
         response.set_cookie("session", token, httponly=True, samesite="lax")
         return response
 
-    return templates.TemplateResponse("login.html", {"request": request, "error": "Incorrect password"})
+    return templates.TemplateResponse(request, "login.html", {"error": "Incorrect password"})
 
 
 @router.get("/logout")
@@ -57,8 +56,7 @@ def dashboard(request: Request):
     today_count    = db.query(AttendanceRecord).filter(AttendanceRecord.date == date.today()).count()
     db.close()
 
-    return templates.TemplateResponse("dashboard.html", {
-        "request":        request,
+    return templates.TemplateResponse(request, "dashboard.html", {
         "total_students": total_students,
         "today_count":    today_count,
     })
@@ -68,7 +66,7 @@ def dashboard(request: Request):
 def enroll_page(request: Request):
     if (r := _auth(request)):
         return r
-    return templates.TemplateResponse("enroll.html", {"request": request})
+    return templates.TemplateResponse(request, "enroll.html", {})
 
 
 @router.get("/students")
@@ -80,8 +78,7 @@ def students_page(request: Request):
     students = db.query(Student).order_by(Student.created_at.desc()).all()
     db.close()
 
-    return templates.TemplateResponse("students.html", {
-        "request":  request,
+    return templates.TemplateResponse(request, "students.html", {
         "students": students,
     })
 
@@ -100,8 +97,7 @@ def monitor_page(request: Request):
     )
     db.close()
 
-    present_map = {r.student_id: r.time_marked for r in records}
-
+    present_map  = {r.student_id: r.time_marked for r in records}
     student_data = [
         {
             "id":      s.id,
@@ -111,12 +107,9 @@ def monitor_page(request: Request):
         }
         for s in students
     ]
-
-    # Sort: absent first so present students don't push absent ones off screen
     student_data.sort(key=lambda s: s["present"])
 
-    return templates.TemplateResponse("monitor.html", {
-        "request":       request,
+    return templates.TemplateResponse(request, "monitor.html", {
         "students":      student_data,
         "present_count": len(present_map),
         "total_count":   len(students),
@@ -136,7 +129,7 @@ def attendance_page(request: Request, selected_date: str = None):
         except ValueError:
             pass
 
-    db = SessionLocal()
+    db  = SessionLocal()
     raw = (
         db.query(AttendanceRecord)
         .filter(AttendanceRecord.date == target_date)
@@ -144,13 +137,10 @@ def attendance_page(request: Request, selected_date: str = None):
         .order_by(AttendanceRecord.time_marked)
         .all()
     )
-    # Convert to plain dicts while the session is still open —
-    # avoids lazy-load errors after db.close()
     records = [{"name": r.student.name, "time": r.time_marked} for r in raw]
     db.close()
 
-    return templates.TemplateResponse("attendance.html", {
-        "request":       request,
+    return templates.TemplateResponse(request, "attendance.html", {
         "records":       records,
         "selected_date": target_date.strftime("%Y-%m-%d"),
         "is_today":      target_date == date.today(),
@@ -166,7 +156,6 @@ def settings_page(request: Request):
     settings = get_settings(db)
     db.close()
 
-    return templates.TemplateResponse("settings.html", {
-        "request":  request,
+    return templates.TemplateResponse(request, "settings.html", {
         "settings": settings,
     })
