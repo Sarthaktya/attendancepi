@@ -93,11 +93,13 @@ def _process_enrollment(frame, faces, state, embedder):
 
     if len(faces) == 1:
         x1, y1, x2, y2 = faces[0]
-        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 255), 2)
 
         now = time.time()
         if now - last_t >= 2.0:
-            face_crop = frame[y1:y2, x1:x2]
+            # CROP FIRST (clean pixels), then draw rectangle for display
+            face_crop = frame[y1:y2, x1:x2].copy()
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 255), 2)
+
             if face_crop.size > 0:
                 emb = embedder.embed(face_crop)
 
@@ -251,7 +253,9 @@ async def run(state, cap, detector, embedder, matcher, tracker, attendance):
                             if msg["type"] == "enrollment_complete":
                                 if os.path.exists(config.EMBEDDINGS_PATH):
                                     db      = np.load(config.EMBEDDINGS_PATH, allow_pickle=True).item()
-                                    matcher = IdentityMatcher(db, threshold=config.RECOGNITION_THRESHOLD)
+                                    # Use the live threshold from state, not the hardcoded default
+                                    thr     = getattr(state, "recognition_threshold", config.RECOGNITION_THRESHOLD)
+                                    matcher = IdentityMatcher(db, threshold=thr)
 
                         # Resize to half resolution + lower quality before sending
                         # cuts bandwidth ~75% with barely noticeable quality loss
@@ -294,8 +298,8 @@ async def run(state, cap, detector, embedder, matcher, tracker, attendance):
                                     state.temporal_min_duration = float(s["temporal_min_duration"])
                                 if "num_enroll_samples" in s:
                                     state.enroll_target = int(s["num_enroll_samples"])
-                            # Update live objects
-                            if "recognition_threshold" in s:
+                            # Update live objects (skip matcher if no embeddings loaded yet)
+                            if "recognition_threshold" in s and matcher is not None:
                                 matcher.threshold = float(s["recognition_threshold"])
                             if "temporal_min_duration" in s:
                                 tracker.min_duration = float(s["temporal_min_duration"])
