@@ -218,7 +218,7 @@ async def run(state, cap, detector, embedder, matcher, tracker, attendance):
     while True:
         try:
             print(f"Connecting to {SERVER_URL}...")
-            async with websockets.connect(url, ping_interval=20, ping_timeout=20) as ws:
+            async with websockets.connect(url, ping_interval=30, ping_timeout=60, max_size=None) as ws:
                 print("Connected.")
 
                 async def sender():
@@ -235,7 +235,9 @@ async def run(state, cap, detector, embedder, matcher, tracker, attendance):
                         frame_count += 1
 
                         # Skip frames we won't send — no point running CV on them
-                        if frame_count % 3 != 0:
+                        # Render free tier: skip more aggressively to survive bandwidth limits
+                        skip = 6 if "onrender" in SERVER_URL else 3
+                        if frame_count % skip != 0:
                             await asyncio.sleep(0.01)
                             continue
 
@@ -262,7 +264,9 @@ async def run(state, cap, detector, embedder, matcher, tracker, attendance):
                         small = cv2.resize(frame, (320, 240))
                         # Browser expects RGB in JPEG — convert from BGR before encoding
                         small = cv2.cvtColor(small, cv2.COLOR_BGR2RGB)
-                        _, buf = cv2.imencode(".jpg", small, [cv2.IMWRITE_JPEG_QUALITY, 40])
+                        # Lower quality for Render (free tier bandwidth limits)
+                        quality = 25 if "onrender" in SERVER_URL else 40
+                        _, buf = cv2.imencode(".jpg", small, [cv2.IMWRITE_JPEG_QUALITY, quality])
                         b64 = base64.b64encode(buf).decode()
                         await ws.send(json.dumps({"type": "frame", "data": b64}))
 
