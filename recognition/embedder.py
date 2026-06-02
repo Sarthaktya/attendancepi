@@ -3,28 +3,28 @@ import numpy as np
 
 
 class FaceEmbedder:
+    """
+    Wraps OpenCV's FaceRecognizerSF (the official SFace API).
+    It uses YuNet's landmarks to align the face before embedding —
+    this is what SFace was designed for and dramatically improves accuracy.
+    """
+
     def __init__(self, model_path):
-        self.net = cv2.dnn.readNet(model_path)
+        self.recognizer = cv2.FaceRecognizerSF.create(model_path, "")
 
-    def embed(self, face):
-        face_resized = cv2.resize(face, (112, 112))
+    def embed(self, frame, detection):
+        """
+        frame:     full BGR camera frame
+        detection: raw YuNet detection row (with landmarks)
+        Returns:   L2-normalised 128-dim embedding
+        """
+        aligned = self.recognizer.alignCrop(frame, detection)
+        feature = self.recognizer.feature(aligned)
+        feature = feature.flatten()
 
-        # Input is BGR. swapRB=True converts it to RGB before the model sees it.
-        blob = cv2.dnn.blobFromImage(
-            face_resized,
-            scalefactor=1.0 / 255,
-            size=(112, 112),
-            mean=(0, 0, 0),
-            swapRB=True,
-            crop=False
-        )
+        # L2-normalise so cosine similarity == dot product
+        norm = np.linalg.norm(feature)
+        if norm > 0:
+            feature = feature / norm
 
-        self.net.setInput(blob)
-        embedding = self.net.forward()
-        embedding = embedding.flatten()
-
-        # Normalize so cosine similarity equals dot product
-        norm = np.linalg.norm(embedding)
-        embedding = embedding / norm
-
-        return embedding
+        return feature

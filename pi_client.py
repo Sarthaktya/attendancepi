@@ -92,17 +92,19 @@ def _process_enrollment(frame, faces, state, embedder):
                 (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
     if len(faces) == 1:
-        x1, y1, x2, y2 = faces[0]
+        detection = faces[0]
+        x1, y1, x2, y2 = FaceDetector.detection_to_box(detection, frame.shape[1], frame.shape[0])
 
         now = time.time()
         if now - last_t >= 2.0:
-            # CROP FIRST (clean pixels), then draw rectangle for display
-            face_crop = frame[y1:y2, x1:x2].copy()
+            # Embed FIRST (from clean frame using landmarks), THEN draw rectangle
+            try:
+                emb = embedder.embed(frame, detection)
+            except Exception:
+                emb = None
             cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 255), 2)
 
-            if face_crop.size > 0:
-                emb = embedder.embed(face_crop)
-
+            if emb is not None:
                 with state.lock:
                     state.enroll_samples.append(emb)
                     state.last_capture_time = now
@@ -117,6 +119,8 @@ def _process_enrollment(frame, faces, state, embedder):
 
                 if done:
                     _finish_enrollment(state)
+        else:
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 255), 2)
     else:
         hint = "No face detected" if len(faces) == 0 else "One face at a time"
         cv2.putText(frame, hint, (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 255), 2)
@@ -162,12 +166,14 @@ def _process_attendance(frame, faces, state, matcher, embedder, tracker, attenda
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 255), 2)
         return
 
-    x1, y1, x2, y2 = faces[0]
-    face_crop = frame[y1:y2, x1:x2]
-    if face_crop.size == 0:
+    detection = faces[0]
+    x1, y1, x2, y2 = FaceDetector.detection_to_box(detection, frame.shape[1], frame.shape[0])
+
+    try:
+        emb = embedder.embed(frame, detection)
+    except Exception:
         return
 
-    emb         = embedder.embed(face_crop)
     raw_name, score = matcher.match(emb)
 
     if raw_name is None:

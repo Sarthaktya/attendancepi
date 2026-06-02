@@ -39,10 +39,12 @@ class IdentityMatcher:
         ranked = sorted(per_person_scores.items(), key=lambda x: x[1], reverse=True)
         best_name, best_score = ranked[0]
 
-        # Margin check — winner must beat second place by 0.05+
-        if len(ranked) > 1:
+        # Margin check — winner must beat second place by a small amount.
+        # Only enforced when there are 3+ enrolled people; with just 2,
+        # similar-looking pairs would always fail this check.
+        if len(ranked) >= 3:
             second_score = ranked[1][1]
-            if best_score - second_score < 0.05:
+            if best_score - second_score < 0.02:
                 return None, best_score   # too ambiguous
 
         if best_score >= self.threshold:
