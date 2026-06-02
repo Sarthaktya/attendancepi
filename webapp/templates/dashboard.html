@@ -61,9 +61,19 @@
   let   count     = {{ today_count }};
 
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
-  const ws    = new WebSocket(`${proto}//${location.host}/ws/browser`);
+  let ws;
 
-  ws.onmessage = (event) => {
+  function connect() {
+    ws = new WebSocket(`${proto}//${location.host}/ws/browser`);
+    ws.onmessage = handleMessage;
+    ws.onclose = () => {
+      piDot.className     = "w-2.5 h-2.5 rounded-full inline-block bg-red-500";
+      piLabel.textContent = "Reconnecting...";
+      setTimeout(connect, 2000);   // auto-reconnect
+    };
+  }
+
+  function handleMessage(event) {
     const msg = JSON.parse(event.data);
 
     if (msg.type === "frame") {
@@ -94,11 +104,8 @@
       `;
       arrivals.prepend(row);
     }
-  };
+  }
 
-  ws.onclose = () => {
-    piDot.className     = "w-2.5 h-2.5 rounded-full inline-block bg-red-500";
-    piLabel.textContent = "Pi Disconnected";
-  };
+  connect();
 </script>
 {% endblock %}

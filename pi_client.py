@@ -96,11 +96,12 @@ def _process_enrollment(frame, faces, state, embedder):
         x1, y1, x2, y2 = FaceDetector.detection_to_box(detection, frame.shape[1], frame.shape[0])
 
         now = time.time()
-        if now - last_t >= 2.0:
+        if now - last_t >= 3.0:
             # Embed FIRST (from clean frame using landmarks), THEN draw rectangle
             try:
                 emb = embedder.embed(frame, detection)
-            except Exception:
+            except Exception as e:
+                print(f"Embed failed: {e}")
                 emb = None
             cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 255), 2)
 
@@ -224,7 +225,7 @@ async def run(state, cap, detector, embedder, matcher, tracker, attendance):
     while True:
         try:
             print(f"Connecting to {SERVER_URL}...")
-            async with websockets.connect(url, ping_interval=30, ping_timeout=60, max_size=None) as ws:
+            async with websockets.connect(url, ping_interval=60, ping_timeout=120, max_size=None) as ws:
                 print("Connected.")
 
                 async def sender():

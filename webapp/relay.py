@@ -19,11 +19,22 @@ class ConnectionRelay:
 
     async def connect_pi(self, ws: WebSocket):
         await ws.accept()
+
+        # Kick out any previous (stale) Pi connection
+        if self.pi is not None:
+            try:
+                await self.pi.close()
+            except Exception:
+                pass
+
         self.pi = ws
         await self.broadcast({"type": "pi_status", "connected": True})
 
-    def disconnect_pi(self):
-        self.pi = None
+    def disconnect_pi(self, ws: WebSocket = None):
+        # Only clear if it's the same socket — prevents new connection
+        # being wiped by old socket's disconnect handler
+        if ws is None or self.pi is ws:
+            self.pi = None
 
     async def connect_browser(self, ws: WebSocket):
         await ws.accept()

@@ -79,8 +79,11 @@ async def pi_endpoint(ws: WebSocket, secret: str = ""):
                 await relay.broadcast(msg)
 
     except WebSocketDisconnect:
-        relay.disconnect_pi()
-        await relay.broadcast({"type": "pi_status", "connected": False})
+        was_current = relay.pi is ws
+        relay.disconnect_pi(ws)
+        # Only mark disconnected if this WAS the current Pi connection
+        if was_current:
+            await relay.broadcast({"type": "pi_status", "connected": False})
 
 
 @router.websocket("/ws/browser")
