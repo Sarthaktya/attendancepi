@@ -2,9 +2,12 @@
 Physical hardware feedback — LEDs and buzzer wired to Pi GPIO.
 
 Wiring (BCM numbering):
-    GPIO 17 → 220Ω → Blue LED  → GND   (success / marked present)
+    GPIO 5  → 220Ω → Blue LED  → GND   (success / marked present)
     GPIO 27 → 220Ω → Red LED   → GND   (unknown face / not matched)
     GPIO 22 → Active buzzer (+) → GND  (audio feedback)
+
+    Note: GPIO 17 was the original blue LED pin but it's reserved by
+    the 5-inch touchscreen ("pendown"). GPIO 5 is the replacement.
 
 All actions are non-blocking — internally they spawn short daemon threads
 so the main CV loop never stalls on a beep or LED timing.
@@ -23,7 +26,7 @@ except Exception:
 
 
 # Pin assignments (BCM)
-BLUE_LED_PIN = 17
+BLUE_LED_PIN = 5     # GPIO 17 was the original choice but it's reserved by the touchscreen
 RED_LED_PIN  = 27
 BUZZER_PIN   = 22
 
@@ -46,7 +49,7 @@ class Feedback:
         self.red.off()
         self.buzzer.off()
 
-        print("Hardware feedback ready (Blue=GPIO17, Red=GPIO27, Buzzer=GPIO22)")
+        print("Hardware feedback ready (Blue=GPIO5, Red=GPIO27, Buzzer=GPIO22)")
 
     # ── Public events ─────────────────────────────────────────────────────────
 
