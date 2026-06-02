@@ -11,12 +11,18 @@ router = APIRouter()
 
 
 @router.delete("/students/{student_id}")
-def delete_student(student_id: int, db: Session = Depends(get_db)):
+async def delete_student(student_id: int, db: Session = Depends(get_db)):
     student = db.query(Student).filter(Student.id == student_id).first()
     if not student:
         return JSONResponse({"error": "Not found"}, status_code=404)
+
+    name = student.name
     db.delete(student)
     db.commit()
+
+    # Tell Pi to remove this person's embeddings from known_embeddings.npy
+    await relay.send_to_pi({"type": "remove_student", "name": name})
+
     return JSONResponse({"ok": True})
 
 

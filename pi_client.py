@@ -300,6 +300,17 @@ async def run(state, cap, detector, embedder, matcher, tracker, attendance):
                                 tracker.min_duration = float(s["temporal_min_duration"])
                             print(f"Settings updated: {s}")
 
+                        elif msg["type"] == "remove_student":
+                            name = msg.get("name")
+                            if name and os.path.exists(config.EMBEDDINGS_PATH):
+                                db = np.load(config.EMBEDDINGS_PATH, allow_pickle=True).item()
+                                if name in db:
+                                    del db[name]
+                                    np.save(config.EMBEDDINGS_PATH, db)
+                                    if matcher:
+                                        matcher.known_embeddings.pop(name, None)
+                                    print(f"Removed embeddings for {name}")
+
                         elif msg["type"] == "reset_embeddings":
                             if os.path.exists(config.EMBEDDINGS_PATH):
                                 os.remove(config.EMBEDDINGS_PATH)
