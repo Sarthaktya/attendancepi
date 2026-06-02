@@ -123,6 +123,19 @@
       Save & Push to Pi
     </button>
 
+    <!-- Danger zone -->
+    <div class="bg-gray-900 border border-red-900/50 rounded-xl p-6 space-y-3">
+      <h3 class="font-semibold text-red-400">Danger Zone</h3>
+      <p class="text-xs text-gray-400">
+        Deletes all enrolled students, attendance records and face data on the Pi.
+        This cannot be undone.
+      </p>
+      <button onclick="resetAll()"
+        class="w-full bg-red-800 hover:bg-red-700 text-white font-semibold rounded-lg py-2.5 text-sm transition">
+        Reset All Students & Data
+      </button>
+    </div>
+
   </div>
 </div>
 {% endblock %}
@@ -148,6 +161,16 @@
       else         showBanner("Something went wrong.", "bg-red-900/50 border border-red-700 text-red-300");
     })
     .catch(() => showBanner("Could not reach server.", "bg-red-900/50 border border-red-700 text-red-300"));
+  }
+
+  function resetAll() {
+    if (!confirm("This will delete ALL students, attendance records and face data. Are you sure?")) return;
+
+    fetch("/api/reset", { method: "POST" })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) showBanner("All data reset. Re-enroll students to start fresh.", "bg-red-900/50 border border-red-700 text-red-300");
+      });
   }
 
   function showBanner(msg, classes) {

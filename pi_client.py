@@ -300,6 +300,15 @@ async def run(state, cap, detector, embedder, matcher, tracker, attendance):
                                 tracker.min_duration = float(s["temporal_min_duration"])
                             print(f"Settings updated: {s}")
 
+                        elif msg["type"] == "reset_embeddings":
+                            if os.path.exists(config.EMBEDDINGS_PATH):
+                                os.remove(config.EMBEDDINGS_PATH)
+                            matcher = None
+                            tracker.first_seen.clear()
+                            tracker.marked.clear()
+                            state.vote_buffer.clear()
+                            print("Embeddings reset.")
+
                 await asyncio.gather(sender(), receiver())
 
         except Exception as e:

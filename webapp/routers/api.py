@@ -85,3 +85,16 @@ async def update_settings(request: Request, db: Session = Depends(get_db)):
     await relay.send_to_pi({"type": "settings_update", "settings": settings})
 
     return JSONResponse({"ok": True, "settings": settings})
+
+
+@router.post("/reset")
+async def reset_all(db: Session = Depends(get_db)):
+    # Delete all attendance records and students
+    db.query(AttendanceRecord).delete()
+    db.query(Student).delete()
+    db.commit()
+
+    # Tell Pi to wipe its local embeddings file
+    await relay.send_to_pi({"type": "reset_embeddings"})
+
+    return JSONResponse({"ok": True})
