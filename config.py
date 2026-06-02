@@ -35,3 +35,7 @@ EMBEDDINGS_PATH    = _path("known_embeddings.npy")
 # Attendance
 ATTENDANCE_LOG_DIR    = _path("attendance_logs")
 TEMPORAL_MIN_DURATION = 2.0   # seconds a face must be visible before being marked
+
+# Hardware feedback (LEDs + buzzer on Pi GPIO)
+# Auto-disabled if gpiozero isn't available (e.g. on the laptop).
+HARDWARE_ENABLED = True

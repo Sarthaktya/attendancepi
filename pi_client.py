@@ -27,6 +27,7 @@ from recognition.embedder      import FaceEmbedder
 from recognition.matcher       import IdentityMatcher
 from tracking.temporal_tracker import TemporalTracker
 from attendance_engine         import AttendanceEngine
+from hardware.feedback         import Feedback
 
 SERVER_URL = os.getenv("SERVER_URL", "wss://your-app.onrender.com")
 PI_SECRET  = os.getenv("PI_SECRET",  "pisecret123")
@@ -191,6 +192,7 @@ def _process_attendance(frame, faces, state, matcher, embedder, tracker, attenda
         if now - state.last_unknown_sent >= 3.0:
             state.last_unknown_sent = now
             state.outbox.put_nowait({"type": "unknown_face"})
+            state.feedback.unknown_face()
 
     if name != "Unknown" and tracker.update(name):
         marked = attendance.mark_present(name)
@@ -201,6 +203,7 @@ def _process_attendance(frame, faces, state, matcher, embedder, tracker, attenda
                 "name": name,
                 "time": time_str,
             })
+            state.feedback.marked_present()
             print(f"Marked present: {name}")
 
     color = (0, 255, 0) if name != "Unknown" else (0, 0, 255)
@@ -364,9 +367,13 @@ def main():
     else:
         print("No embeddings found — run enrollment first.")
 
-    state = State()
+    state          = State()
+    state.feedback = Feedback(enabled=config.HARDWARE_ENABLED)
 
-    asyncio.run(run(state, cap, detector, embedder, matcher, tracker, attendance))
+    try:
+        asyncio.run(run(state, cap, detector, embedder, matcher, tracker, attendance))
+    finally:
+        state.feedback.cleanup()
 
 
 if __name__ == "__main__":

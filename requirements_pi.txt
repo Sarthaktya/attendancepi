@@ -1,4 +1,4 @@
 opencv-contrib-python
 numpy
 websockets
-# picamera2 is pre-installed on Raspberry Pi OS — do not pip install it
+# picamera2 and gpiozero are pre-installed on Raspberry Pi OS — do not pip install them
