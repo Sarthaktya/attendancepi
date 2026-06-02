@@ -22,6 +22,7 @@ Replace manual classroom attendance with an automated camera-based system. A cam
 - Deployed to Render at `https://attendancepi-7wgk.onrender.com`
 - Also runs fully Pi-local at `http://raspberrypi.local:8000` (no internet needed)
 - `systemd` services auto-start both the Pi client and (when self-hosted) the web server on boot
+- **Physical hardware feedback** — blue LED + beep on successful mark, red LED + double beep on unknown face
 
 ### Known limitations
 - Render free tier spins down after 15 min idle (use UptimeRobot to keep warm)
@@ -85,6 +86,9 @@ A face must be *continuously* visible as the same person for N seconds before be
 ### Live settings updates over the same WebSocket
 When you save settings in the UI, the server pushes the new values to the Pi over the existing WebSocket. The Pi updates the matcher threshold, tracker duration, etc. live — no restart, no reconnect.
 
+### Hardware feedback module is optional and isolated
+`hardware/feedback.py` wraps GPIO control behind a small class. If `gpiozero` isn't available (laptop testing) or `HARDWARE_ENABLED = False`, every method becomes a no-op. Each LED/buzzer action spawns a short-lived daemon thread so the CV loop is never blocked by `time.sleep()` calls during a beep or flash sequence.
+
 ### Same router file structure for pages + API + WebSockets
 `webapp/routers/pages.py` for HTML pages, `api.py` for JSON endpoints, `ws.py` for WebSockets. Clean separation, easy to find things.
 
@@ -102,6 +106,7 @@ When you save settings in the UI, the server pushes the new values to the Pi ove
 | Recognition | OpenCV `FaceRecognizerSF` (SFace) | Optimised for edge, official OpenCV API |
 | Async WebSocket | `websockets` library | Standard for Python asyncio WS clients |
 | Process supervision | `systemd` services | Auto-start on boot, restart on crash |
+| GPIO control | `gpiozero` (pre-installed on Pi OS) | Cleanest Pi GPIO API |
 
 ### Server-side (`webapp/`)
 | Component | Choice | Why |
@@ -178,6 +183,22 @@ When you save settings in the UI, the server pushes the new values to the Pi ove
 
 ---
 
+## Hardware Wiring
+
+```
+Pi 5V (pin 2)   ──────────────── Buzzer (+)
+Buzzer (−)      ──────────────── BC547 Collector
+BC547 Emitter   ──────────────── GND rail
+GPIO 22         ── 270Ω ──────── BC547 Base
+
+GPIO 5          ── 220Ω ──────── Blue LED anode  → cathode → GND rail
+GPIO 27         ── 220Ω ──────── Red LED anode   → cathode → GND rail
+```
+
+- **GPIO 17 cannot be used** — it's reserved by the 5-inch touchscreen (`pendown`)
+- **Buzzer needs the BC547 transistor** because GPIO can't source enough current. The 5V rail powers the buzzer; GPIO 22 just switches the transistor on/off.
+- All cathodes and the transistor emitter share the same breadboard GND rail wired back to a Pi GND pin.
+
 ## File Map
 
 ```
@@ -193,6 +214,8 @@ attendancepi_v2/
 │   └── matcher.py           — Top-3 mean + margin check
 ├── tracking/
 │   └── temporal_tracker.py  — "N seconds continuous" gating
+├── hardware/
+│   └── feedback.py          — LEDs + buzzer via gpiozero (no-op on laptop)
 ├── webapp/
 │   ├── main.py              — FastAPI app entry
 │   ├── database.py          — SQLAlchemy models + settings helpers
