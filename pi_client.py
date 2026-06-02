@@ -263,6 +263,7 @@ async def run(state, cap, detector, embedder, matcher, tracker, attendance):
                         await ws.send(json.dumps({"type": "frame", "data": b64}))
 
                 async def receiver():
+                    nonlocal matcher
                     async for raw in ws:
                         msg = json.loads(raw)
 
